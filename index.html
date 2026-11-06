@@ -37,7 +37,7 @@ label.l{display:block;font-weight:600;margin:6px 0 4px}
 <body>
 <div class="w">
 <h1>📚 Biblioteka e shkollës</h1>
-<div class="row noprint" style="margin-bottom:12px"><button class="b" id="gx">⬇ Excel</button><button class="b" id="gp">📄 PDF</button></div>
+<div class="row noprint" style="margin-bottom:12px"><button class="b" id="gx">⬇ Excel</button><button class="b" id="gp">📄 PDF</button><button class="b" id="gl">🔗 Linku</button></div>
 <div class="tabs" id="tabs"></div>
 <div id="app"></div>
 <div class="st" id="st"></div>
@@ -143,6 +143,9 @@ $('gp').onclick=function(){
   var b=d.output('blob');
   try{var f=new File([b],n,{type:'application/pdf'});if(navigator.canShare&&navigator.canShare({files:[f]})){navigator.share({files:[f],title:'Gjendja e librave'}).catch(function(){});return}}catch(e){}
   d.save(n)};
+$('gl').onclick=function(){var u='https://claude.ai/artifact/BStfQqKKETaqfg7WmaRJMK',t='Biblioteka e shkollës';
+  if(navigator.share){navigator.share({title:t,text:t,url:u}).catch(function(){});return}
+  try{navigator.clipboard.writeText(u).then(function(){alert('Linku u kopjua. Ngjite ku do ta dërgosh.')},function(){prompt('Kopjo linkun:',u)})}catch(e){prompt('Kopjo linkun:',u)}};
 $('gx').onclick=function(){
   var n='stoku-'+today()+'.csv',t=stockFile();
   try{var f=new File([t],n,{type:'text/csv'});if(navigator.canShare&&navigator.canShare({files:[f]})){navigator.share({files:[f],title:'Gjendja e librave'}).catch(function(){});return}}catch(e){}
