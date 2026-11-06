@@ -37,10 +37,13 @@ label.l{display:block;font-weight:600;margin:6px 0 4px}
 <body>
 <div class="w">
 <h1>📚 Biblioteka e shkollës</h1>
+<div class="row noprint" style="margin-bottom:12px"><button class="b" id="gx">⬇ Excel</button><button class="b" id="gp">📄 PDF</button></div>
 <div class="tabs" id="tabs"></div>
 <div id="app"></div>
 <div class="st" id="st"></div>
 </div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
 <script>
 var F={em:'',mb:'',kl:'',dt:''};
 function grab(){if($('em')){F.em=$('em').value;F.mb=$('mb').value;F.kl=$('kl').value;F.dt=$('dt').value}}
@@ -118,6 +121,32 @@ function giveBack(id){
 
 /* ---------- pamja ---------- */
 function match(s){return !q||s.toLowerCase().indexOf(q.toLowerCase())>=0}
+function stockFile(){
+  var m={},k=[],ou=0;books.forEach(function(b){var key=b.title+'|'+b.author;if(!m[key]){m[key]={t:b.title,a:b.author,i:0,o:0};k.push(key)}if(b.status==='out'){m[key].o++;ou++}else m[key].i+=(b.n||1)});
+  k.sort(function(x,y){return m[x].t.localeCompare(m[y].t,'sq')||m[x].a.localeCompare(m[y].a,'sq')});
+  var r=[['Gjendja e stokut',fmtD(Date.now())],['Gjithsej kopje',cnt(books)],['Në raft',cnt(books)-ou],['Të huazuara',ou],[],['Nr.','Titulli','Autori','Gjithsej kopje','Në raft','Të huazuara']];
+  k.forEach(function(x,i){var e=m[x];r.push([i+1,e.t,e.a,e.i+e.o,e.i,e.o])});
+  return '\ufeff'+r.map(function(a){return a.map(function(c){return'"'+String(c==null?'':c).replace(/"/g,'""')+'"'}).join(';')}).join('\r\n')}
+function stockData(){
+  var m={},k=[],ou=0;books.forEach(function(b){var key=b.title+'|'+b.author;if(!m[key]){m[key]={t:b.title,a:b.author,i:0,o:0};k.push(key)}if(b.status==='out'){m[key].o++;ou++}else m[key].i+=(b.n||1)});
+  k.sort(function(x,y){return m[x].t.localeCompare(m[y].t,'sq')||m[x].a.localeCompare(m[y].a,'sq')});
+  return{ou:ou,rows:k.map(function(x,i){var e=m[x];return[i+1,e.t,e.a,e.i+e.o,e.i,e.o]})}}
+function sendFile(f,n,mime){
+  try{if(navigator.canShare&&navigator.canShare({files:[f]})){navigator.share({files:[f],title:'Gjendja e librave'}).catch(function(){});return}}catch(e){}
+  dl(n,f,mime)}
+$('gp').onclick=function(){
+  var J=window.jspdf;if(!J||!J.jsPDF){alert('PDF-ja kërkon internet. Lidhu dhe provo sërish.');return}
+  var s=stockData(),n='stoku-'+today()+'.pdf',d=new J.jsPDF();
+  d.setFontSize(14);d.text('Gjendja e librave - Biblioteka e shkollës',14,14);
+  d.setFontSize(10);d.text(fmtD(Date.now())+'   |   Gjithsej kopje: '+cnt(books)+'   |   Në raft: '+(cnt(books)-s.ou)+'   |   Të huazuara: '+s.ou,14,21);
+  d.autoTable({startY:26,head:[['Nr.','Titulli','Autori','Gjithsej','Në raft','Të huazuara']],body:s.rows,styles:{fontSize:8,cellPadding:1.5},headStyles:{fillColor:[48,84,150]},columnStyles:{0:{cellWidth:10},3:{cellWidth:16},4:{cellWidth:14},5:{cellWidth:20}}});
+  var b=d.output('blob');
+  try{var f=new File([b],n,{type:'application/pdf'});if(navigator.canShare&&navigator.canShare({files:[f]})){navigator.share({files:[f],title:'Gjendja e librave'}).catch(function(){});return}}catch(e){}
+  d.save(n)};
+$('gx').onclick=function(){
+  var n='stoku-'+today()+'.csv',t=stockFile();
+  try{var f=new File([t],n,{type:'text/csv'});if(navigator.canShare&&navigator.canShare({files:[f]})){navigator.share({files:[f],title:'Gjendja e librave'}).catch(function(){});return}}catch(e){}
+  dl(n,t,'text/csv')};
 function render(){
   var out=books.filter(function(b){return b.status==='out'}),inn=books.filter(function(b){return b.status!=='out'});
   var T=[['huazo','📖 Huazo'],['huazuar','📋 Të huazuara ('+out.length+')'],['hist','🕘 Historiku'],['shto','📚 Librat ('+cnt(inn)+')']];
@@ -140,7 +169,7 @@ function render(){
     var l=inn.filter(function(b){return match(b.title+' '+b.author)}).sort(function(a,b){return a.title.localeCompare(b.title)});
     h+=l.map(function(b){return'<div class="item"><div><b>'+esc(b.title)+'</b><small>'+esc(b.author)+'</small></div><button class="b" data-a="bo" data-id="'+b.id+'">Huazo</button></div>'}).join('')||'<p class="st">Nuk ka libra. Shtoji te "+ Shto".</p>';
   }else if(tab==='huazuar'){
-    h+='<div class="item" style="display:block"><b>Gjendja e bibliotekës</b><br>Gjithsej libra: <b>'+cnt(books)+'</b><br>Në raft: <b>'+cnt(inn)+'</b><br>Të huazuara: <b>'+out.length+'</b><div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap" class="noprint"><button class="b" id="rcp">📋 Kopjo raportin</button><button class="b s" id="rxl">⬇ Excel</button><button class="b s" id="rpr">🖨 Printo / PDF</button></div></div>';
+    h+='<div class="item" style="display:block"><b>Gjendja e bibliotekës</b><br>Gjithsej libra: <b>'+cnt(books)+'</b><br>Në raft: <b>'+cnt(inn)+'</b><br>Të huazuara: <b>'+out.length+'</b><div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap" class="noprint"><button class="b" id="rcp">📋 Kopjo raportin</button><button class="b s" id="rxl">⬇ Excel (librat e huazuar)</button><button class="b s" id="rst">📊 Excel: gjendja e stokut</button><button class="b s" id="rpr">🖨 Printo / PDF</button></div></div>';
     var l2=out.filter(function(b){return match(b.title+' '+b.student)}).sort(function(a,b){return a.out-b.out});
     h+=l2.map(function(b){return'<div class="item"><div><b>'+esc(b.title)+'</b><small>'+esc(b.student)+(b.cls?' · '+esc(b.cls):'')+' · marrë më '+fmtD(b.out)+'</small></div><button class="b" data-a="rt" data-id="'+b.id+'">Kthe</button></div>'}).join('')||'<p class="st">Asnjë libër nuk është i huazuar.</p>';
   }else if(tab==='hist'){
@@ -163,6 +192,7 @@ function render(){
   }});
   if($('rcp'))$('rcp').onclick=function(){copyTxt(report())};
   if($('rpr'))$('rpr').onclick=function(){window.print()};
+  if($('rst'))$('rst').onclick=function(){dl('stoku-'+today()+'.csv',stockFile(),'text/csv')};
   if($('rxl'))$('rxl').onclick=function(){
     var o=books.filter(function(b){return b.status==='out'}).sort(function(a,b){return a.out-b.out});
     var r=[['Raport i bibliotekës',fmtD(Date.now())],['Gjithsej libra',cnt(books)],['Në raft',cnt(books)-o.length],['Të huazuara',o.length],[],['Libri','Emri dhe mbiemri','Klasa','Data e marrjes']].concat(o.map(function(b){return[b.title,b.student,b.cls,fmtD(b.out)]}));
